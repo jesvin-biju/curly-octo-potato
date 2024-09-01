@@ -1,0 +1,661 @@
+import mysql.connector
+from tabulate import tabulate
+C=mysql.connector.connect(host='localhost',user='root',password='admin')
+curs=C.cursor()
+def Database():
+    tot=0
+    try:
+        curs.execute('create database Project101')
+    except:
+        tot+=1
+    curs.execute('use Project101')
+    try:
+        curs.execute('create table Userdata(Name varchar(20) NOT NULL,Phoneno varchar(10) Primary Key,Password varchar(10) NOT NULL)')
+    except:
+        tot+=1
+    try:
+        curs.execute('create table Movies(M_name varchar(20),Screen_no int,Seat_left int,Time varchar(20))')
+    except:
+        tot+=1
+    if tot!=0:
+        tot+=0
+    else:
+        f=open("Movie_History.txt",'w')
+        f.close()
+        f=open("Movie.txt",'w')
+        f.close()
+        f=open("feedback.txt",'w')
+        f.close()
+
+def Gui():
+    mydata=[['1.Sign Up'],['2.Login'],['3.Exit Program']]
+    head=['  Menu']
+    print(tabulate(mydata, headers=head, tablefmt="fancy_grid"))
+    try:
+        n=int(input('Enter your choice(1,2,3): '))
+        if n not in (1,2,3):
+            print("Enter 1,2 or 3 please")
+            Gui()
+    
+    except:
+        print("Enter 1,2 or 3 please")
+        Gui()
+    if n==1:
+        Signup()
+    if n==2:
+        Login()
+    if n==3:
+        exit()
+
+def Signup():
+    a=input('Enter A Username:')
+    c=input("Enter A Password (max 10 charecters) :")
+    n=0
+  
+    try:
+        b=int(input("Enter a phone number"))
+        p=str(b)
+        if len(p)==10:
+            n+=1
+        else:
+            print("Enter a valid phone number")
+            Signup()
+    except:
+        print("Enter a valid Phone number")
+        Signup()
+    if n!=0:
+        curs.execute('insert into userdata values("{}",{},"{}")'.format(a,b,c))
+        C.commit()
+        print("Your data has been saved to the server")
+        print("Welcome ",a)
+        User(a)
+
+def Login():
+    choice=""
+    Name=input("Enter your User name:")
+    Pass=input("Enter your Password:")
+    curs.execute("select * from userdata where Name='{}' and Password='{}'".format(Name,Pass))
+    L=curs.fetchone()
+    def aa():
+            choice=input("Enter 1 to retry Login 2 to Signup:")
+            choice=str(choice)
+            if choice=='1':
+                Login()
+            elif choice=='2':
+                Signup()
+            else:
+                print("Enter 1 or 2")
+                aa()
+    if Name=="ADMIN":
+        if Pass=="ADMIN":
+            Admin()
+        else:
+            print("Wrong Password")
+            Login()
+    elif L is None:
+        print("Your password or username is wrong")
+        aa()
+    else:
+        print("Congrats you have logged in",Name)
+        User(Name)
+
+def Admin():
+    mydata=[['1.Search movies'],['2.Add Movies'],['3.Remove movies'],['4.Reset the database'],['5.Log-out'],["6.Average Reviews"],["7.Reviews"]]
+    head=['    Menu']
+    print(tabulate(mydata, headers=head, tablefmt="fancy_grid"))
+    try:
+        choice=int(input("Enter your choice(1,2,3,4,5,6): "))
+    except:
+        print("Please enter a valid choice")
+        Admin()
+    if choice==1:
+        Movie_name=input("Enter the movie name: ")
+        curs.execute("select * from Movies where M_name='{}'".format(Movie_name))
+        p=curs.fetchall()
+        if p==[]:
+            print("Sorry the movie ",Movie_name," was not found")
+            Admin()
+        else:
+            for i in p:
+                print("Movie name :",i[0])
+                print("Screen no :",i[1])
+                print("Seats left :",i[2])
+                print("Time:",i[3])
+            Admin()
+    elif choice==2:
+        def Movie_Name_asker():
+            Movie_name=input("Enter the movie name(maximum 20 charecters): ")
+            if len(Movie_name)>20:
+                print("Movie name too long")
+                Movie_Name_asker()
+            else:
+                return Movie_name
+        Movie_name=Movie_Name_asker()
+        print(Movie_name)
+        Screen_no=input("Enter the screen number(1 or 2): ")
+        while Screen_no not in "1,2":
+            print("Please enter a valid screen number")
+            Screen_no=input("Enter the screen number(1 or 2): ")
+        if Screen_no=="1":
+            Seats=50
+        if Screen_no=="2":
+            Seats=100
+        Screen_no=int(Screen_no)
+        Time=input("Enter the time of the Movie")
+        curs.execute("insert into Movies values('{}',{},{},'{}')".format(Movie_name,Screen_no,Seats,Time))
+        C.commit()
+        print("Movie ",Movie_name," added succesfully")
+        Admin()
+    elif choice==3:
+        Movie_name=input("Enter the movie name: ")
+        curs.execute("select * from Movies where M_name='{}'".format(Movie_name))
+        p=curs.fetchall()
+        while p==[]:
+            print("Sorry the movie ",Movie_name," was not found")
+            Movie_name=input("Enter the movie name: ")
+        print("Are you sure to delete the movie ",Movie_name," (type yes to continue): ",end="")
+        confirm=input("")
+        if confirm=="yes":
+            curs.execute("delete from Movies where M_name='{}'".format(Movie_name))
+            C.commit()
+            print("Successfully deleted")
+            Admin()
+        else:
+            print("Ok movie not deleted")
+            Admin()
+    elif choice==4:
+        curs.execute("drop database project101")
+        Database()
+        Admin()
+    elif choice==5:
+        print("Succesfully logged out")
+        Gui()
+    elif choice==6:
+        avg_review()
+    elif choice==7:
+        review()
+
+def User(Name):
+    mydata=[['1.Available movies'],['2.Booked movies history'],['3.Search a movie'],['4.Leave a Review'],['5.Log-out']]
+    head=['    Menu']
+    print(tabulate(mydata, headers=head, tablefmt="fancy_grid"))
+    try:
+        choice=int(input("Enter your choice(1,2,3,4,5): "))
+    except:
+        print("Please enter a valid option")
+        User(Name)
+    if choice==1:
+        curs.execute("select * from Movies")
+        Movies=curs.fetchall()
+        for i in Movies:
+            print(i[0])
+        M_Name=input("Enter the movie name:")
+        curs.execute("select * from Movies where M_name='{}'".format(M_Name))
+        r=curs.fetchall()
+        if r==[]:
+            print("Movie not found")
+            User(Name)
+        for i in r:
+            
+            print("Movie name: ",i[0])
+            print("Screen number: ",i[1])
+            print("Seats left: ",i[2])
+            print("Time: ",i[3])
+        Book(Name,r[0][0])
+    elif choice==2:
+        f=open("Movie_History.txt","r")
+        ab=[]
+        n=0
+        d=f.readlines()
+        f.close()
+        for i in d:
+            L=i.split()
+            if L[0]==Name:
+                if n==0:
+                    print("The movies you have booked are")
+                    n+=1
+                print(L[1])
+        if n==0:
+            print("You have not booked any movies yet")
+        User(Name)
+
+    elif choice==3:
+        M_Name=input("Enter the name of the Movie")
+        curs.execute("select * from Movies where M_name='{}'".format(M_Name))
+        r=curs.fetchall()
+        for i in r:
+            print("Movie name: ",i[0])
+            print("Screen number: ",i[1])
+            print("Seats left: ",i[2])
+            print("Time: ",i[3])
+        b=input("Do you want to book tickets(Y to book,any other letter to go back):")
+        if b=="Y":
+            Book(Name,r[0][0])
+        else:
+            User(Name)
+        
+        
+    elif choice==4:
+        Feedback(Name)
+    elif choice==5:
+        print("Succesfully logged out")
+        Gui()
+    else:
+        print("Invalid option")
+        User(Name)
+
+def Book(Name,a):
+    try:
+        b=int(input("Enter the number of seats to be booked"))
+        if b<=0:
+            print("You cannot book ",b," number of seats")
+            Book(Name,a)
+    except:
+        print("Enter a valid number of seats")
+        Book(Name,a)
+    cost=b*150
+    print("Total cost for that would be ","₹",cost)
+    con=input("do you want to proceed(y to continue)")
+    if con=="y":
+        time=input("Enter the time you want")
+        def screen_number_ask():
+            try:
+                screen=int(input("Enter the screen number(1/2):"))
+                if screen not in [1,2]:
+                    print("Pease enter a valid screen number")
+                    screen_number_ask()
+                else:
+                    return screen
+            except:
+                print("Please enter a valid screen number")
+                screen_number_ask()
+        
+        screen=screen_number_ask()
+        curs.execute("select * from Movies where M_name='{}' and Time='{}' and Screen_no='{}'".format(a,time,screen))
+        r=curs.fetchall()
+        b_string=str(b)
+        d=""
+        try:
+            d=r[0][2]
+            if d>=b:
+                curs.execute("update Movies set Seat_left=Seat_left-{} where M_name='{}'".format(b,a))
+                C.commit()
+                file=open('Movie_History.txt','a')
+                details=Name+" "+a+" "+b_string+"\n"
+                file.writelines(details)
+                file.close()
+                print("You have booked your movie ticket")
+                htt=input("Do you want to order food(y/n)")
+                if htt in ["y","Y"]:
+                    Foods(Name)
+                    User(Name)
+                else:
+                    User(Name)
+        
+            else:
+                print("Sorry there are no seats left")
+                User(Name)
+        except:
+            print("Sorry movie not found")
+            User(Name)
+    else:
+        print("")
+        Book(Name,a)
+Cart=[]
+def Foods(Name):
+    mydata=[['1.Popcorn'],["2.Snacks"],['3.beverages'],["4.Back"],["5.Empty the cart"]]
+    head=['  Food Menu']
+    print(tabulate(mydata, headers=head, tablefmt="fancy_grid"))
+    a=input("Enter the choice(1,2,3,4):")
+    b=0
+    try:
+        b=int(a)
+    except:
+        print("Please enter a valid option")
+        Foods(Name)
+    if b==1:
+        b=0
+        mydata=[['1.Salt'],["2.Caramel"],['3.Butter'],["4.Back"]]
+        head=['  Flavors']
+        print(tabulate(mydata, headers=head, tablefmt="fancy_grid"))
+        a=input("Enter the choice(1,2,3,4):")
+        try:
+            b=int(a)
+        except:
+            print("Please enter a valid option")
+            Foods(Name)
+        if b==1:
+            def Salt():
+                global Cart
+                c=input("Enter the amount of popcorn needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Salt()
+                g=[]
+                g.append("Salt_Popcorn")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Salt()
+            Foods(Name)
+        elif b==2:
+            def Caramel():
+                global Cart
+                c=input("Enter the amount of popcorn needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Caramel()
+                g=[]
+                g.append("Caramel_Popcorn")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Caramel()
+            Foods(Name)
+        elif b==3:
+            def Butter():
+                global Cart
+                c=input("Enter the amount of popcorn needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Butter()
+                g=[]
+                g.append("Butter_Popcorn")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Butter()
+            Foods(Name)
+        elif b==4:
+            Foods(Name)
+        else:
+            print("Please enter a valid option")
+    elif b==2:
+        b=0
+        mydata=[['1.French Fries'],["2.Lays"],['3.Pizza'],['4.Nuggets'],["5.Back"]]
+        head=['  Snacks']
+        print(tabulate(mydata, headers=head, tablefmt="fancy_grid"))
+        a=input("Enter the choice(1,2,3,4,5):")
+        try:
+            b=int(a)
+        except:
+            print("Please enter a valid option")
+        if b==1:
+            def French_Fries():
+                global Cart
+                c=input("Enter the amount of French fries needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    French_Fries()
+                g=[]
+                g.append("French_Fries")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            French_Fries()
+            Foods(Name)
+        elif b==2:
+            def Lays():
+                global Cart
+                c=input("Enter the amount of Lays needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Lays()
+                g=[]
+                g.append("Lays")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Lays()
+            Foods(Name)
+        elif b==3:
+            def Pizza():
+                global Cart
+                c=input("Enter the amount of Pizza needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Pizza()
+                g=[]
+                g.append("Pizza")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Pizza()
+            Foods(Name)
+        elif b==4:
+            def Nuggets():
+                global Cart
+                c=input("Enter the amount of Nuggets needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Nuggets()
+                g=[]
+                g.append("Nuggets")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Nuggets()
+            Foods(Name)
+        elif b==5:
+            Foods(Name)
+        else:
+            print("Please enter a valid option")
+            Foods(Name)
+    elif b==3:
+        b=0
+        mydata=[['1.Tea'],["2.Coffee"],['3.Pepsi'],["4.Back"]]
+        head=['  Snacks']
+        print(tabulate(mydata, headers=head, tablefmt="fancy_grid"))
+        a=input("Enter the choice(1,2,3,4,5):")
+        try:
+            b=int(a)
+        except:
+            print("Please enter a valid option")
+        if b==1:
+            def Tea():
+                global Cart
+                c=input("Enter the amount of Tea needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Tea()
+                g=[]
+                g.append("Tea")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Tea()
+            Foods(Name)
+        elif b==2:
+            def Coffee():
+                global Cart
+                c=input("Enter the amount of Coffee needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Coffee()
+                g=[]
+                g.append("Coffee")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Coffee()
+            Foods(Name)
+        elif b==3:
+            def Pepsi():
+                global Cart
+                c=input("Enter the amount of Pepsi needed:")
+                try:
+                    d=int(c)
+                except:
+                    print("Enter a valid option")
+                    Pepsi()
+                g=[]
+                g.append("Pepsi")
+                g.append(d)
+                Cart.append(g)
+                print("Added to cart")
+            Pepsi()
+            Foods(Name)
+        elif b==4:
+            Foods(Name)
+    elif b==4:
+        global Cart
+        mydata=[]
+        if Cart==[]:
+            return
+        else:
+            T_cost=0
+            hjh=["food item","number booked","total cost"]
+            mydata.append(hjh)
+            for i in Cart:
+                hmt=[]
+                if i[0]=="Salt_Popcorn":
+                    T_cost+=40*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="Caramel_Popcorn":
+                    T_cost+=60*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="Butter_Popcorn":
+                    T_cost+=50*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="French_Fries":
+                    T_cost+=100*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="Lays":
+                    T_cost+=10*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="Pizza":
+                    T_cost+=150*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="Nuggets":
+                    T_cost+=120*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)     
+                elif i[0]=="Tea":
+                    T_cost+=20*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="Coffee":
+                    T_cost+=20*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                elif i[0]=="Pepsi":
+                    T_cost+=30*i[1]
+                    hmt.append(i[0])
+                    hmt.append(i[1])
+                    hmt.append(20*i[1])
+                    mydata.append(hmt)
+                else:
+                    print("Something is wrong")
+            print("Total cost would be",T_cost)
+            print("You have booked:")
+            print(tabulate(mydata, headers='firstrow', tablefmt="fancy_grid"))
+            tth=input("Do you want to continue(y/n)")
+            if tth in ["y","Y"]:
+                print("Your food has been booked")
+                return
+            else:
+                print("food booking cancelled")
+                Foods(Name)
+        print()
+    elif b==5:
+        Cart=[]
+        Foods(Name)
+    else:
+        print("Please enter a valid option")
+        Foods(Name)
+
+def Feedback(Name):
+    a=input("Enter the No of stars you would like to give(1/2/3/4/5):")
+    if a in ["1","2","3","4","5"]:
+        b=int(a)
+    else:
+        print("Please enter a valid number of stars")
+        Feedback(Name)
+    c=input("Enter your Review(One line please):")
+    review=a+" "+Name+" "+c+"\n"
+    f=open("feedback.txt",'a')
+    f.write(review)
+    f.close()
+    print("Thank you for your review")
+    User(Name)
+    
+def avg_review():
+    f=open("feedback.txt",'r')
+    r=f.readlines()
+    summ=0
+    count=0
+    if r==[]:
+        print("There are no reviews currently")
+        Admin()
+    else:
+        for i in r:
+            summ+=int(i[0])
+            count+=1
+    if count!=0:
+        avg=summ/count
+        print("The average rating is",avg)
+        Admin()
+
+def review():
+    f=open("feedback.txt",'r')
+    r=f.readlines()
+    if r==[]:
+        print("There are no reviews currently")
+        Admin()
+    for i in r:
+        s=i.split()
+        print("Rating:",s[0])
+        print("User:",s[1])
+        print("Comment:",s[2]," ",end="")
+        n=3
+        try:
+            while True:
+                print(s[n]," ",end="")
+                n+=1
+        except:
+            print()
+    Admin()
+Database()
+Gui()
